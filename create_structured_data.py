@@ -9,74 +9,29 @@ import unicodedata
 import gpxpy
 import argparse
 
+from aves_data import sky_condition_levels, wind_levels, observation_characteristics, observation_methods, temperature_levels, genera
+
 aves_bird_list_file = "aves_birds"
 name_sim_threshold = 50
 
-sky_condition_levels = [
-    {
-        "name": "jasno (obloha úplne bez oblačnosti)",
-        "code": 1,
-        "descriptive_words": ["jasno"],
-    },
-    {
-        "name": "polojasno (veľká väčšina oblohy bez oblačnosti)",
-        "code": 2,
-        "descriptive_words": ["polojasno"],
-    },
-    {
-        "name": "polooblačno (asi polovica oblohy je pokrytá oblačnosťou)",
-        "code": 3,
-        "descriptive_words": ["polooblacno"],
-    },
-    {
-        "name": "oblačno (väčšina oblohy je pokrytá oblačnosťou)",
-        "code": 4,
-        "descriptive_words": ["oblacno"],
-    },
-    {
-        "name": "zamračené (obloha je úplne pokrytá oblačnosťou)",
-        "code": 5,
-        "descriptive_words": ["zamracene"],
-    },
-    {
-        "name": "hmla / zamračené nízkou inverznou oblačnosťou (na horách jasno)",
-        "code": 6,
-        "descriptive_words": ["hmla", "inverzia"],
-    },
-]
 
-wind_levels = [
-    {"name": "bezvetrie", "code": 1, "descriptive_words": ["bezvetrie"]},
-    {
-        "name": "slabý vietor (vietor pohybuje iba listami na stromoch, ale nie konármi)",
-        "code": 2,
-        "descriptive_words": ["listy", "slaby vietor"],
-    },
-    {
-        "name": "mierny vietor (vietor už pohybuje aj konármi stromov)",
-        "code": 3,
-        "descriptive_words": ["konare", "mierny vietor"],
-    },
-    {
-        "name": "silný vietor (vietor pohybuje celým stromom, môže dochádzať k odlamovaniu konárov)",
-        "code": 4,
-        "descriptive_words": ["stromy", "silny vietor"],
-    },
-    {
-        "name": "víchrica (na stromoch sa odlamujú veľké konáre, alebo sa vyvracajú celé stromy)",
-        "code": 5,
-        "descriptive_words": ["vichrica"],
-    },
-]
+def get_default_observation_method(text):
+    for word in ["ozyva", r"vola[^v]", "spieva"]:
+        if re.search(word, text):
+            return {"name": "AKUSTICKY MONITORING - akustický monitoring", "code": "15"}
+    return {"name": "VIZUAL - vizuálne pozorovanie", "code": "8"}
 
-data_raw = [
-    {
-        "text": "rybarik hirundo rustica 2 sedi na trstine pri Ciernej vode 5.8. 12:23 13:23 zamrac bezv",
-        "lon": 17.469024641149367,
-        "lat": 48.3266521,
-    }
-]
+def get_temperature_level(temp):
+    for level in temperature_levels:
+        if temp < max(level["range"]) and temp >= min(level["range"]):
+            return level
+    return None
 
+def get_default_observation_characteristic(month):
+    if month >= 4 and month < 8:
+        return {"name": "A0 - výskyt od 1.4. do 31.7.", "code": "19"}
+    else:
+        return {"name": "M_MV - migrácia alebo výskyt v mimohniezdnom období", "code": "36"}
 
 def strip_accents(s):
     return "".join(
@@ -102,15 +57,11 @@ def get_weather_level(text, weather_level_data):
 
     top_result_idx = max(scores, key=scores.get)
 
-    return (
-        weather_level_data[top_result_idx]["code"],
-        weather_level_data[top_result_idx]["name"],
-    )
+    return weather_level_data[top_result_idx]
 
 
 def get_bird_names(text, bird_lists, n):
     candidates = []
-    # top_sim = 0
     for bird_list in bird_lists:
         candidates_for_language = []
         for bird_name, bird_code in bird_list.items():
@@ -118,16 +69,10 @@ def get_bird_names(text, bird_lists, n):
                 strip_accents(text).lower(), strip_accents(bird_name).lower()
             )
             first_part_of_name = strip_accents(bird_name).lower().strip().split(" ")[0]
-            # print(f">>>>> {first_part_of_name}")
             sim2 = fuzz.partial_ratio(strip_accents(text).lower(), first_part_of_name)
             if sim1 > name_sim_threshold or sim2 > name_sim_threshold:
                 candidates_for_language.append((max(sim1, sim2), bird_name, bird_code))
         candidates.extend(candidates_for_language)
-    # if len(candidates_for_language) > 0:
-    #     candidates_for_language.sort(key=lambda t: t[0], reverse=True)
-    #     if candidates_for_language[0][0] > top_sim - 0.1:
-    #         top_sim = max(candidates_for_language[0][0], top_sim)
-    # # candidates.extend(candidates_for_language)
 
     if len(candidates) > 0:
         candidates.sort(key=lambda t: t[0], reverse=True)
@@ -182,12 +127,11 @@ def is_summer_time(year, month, day):
     return timezone_aware_date.tzinfo._dst.seconds != 0
 
 
-def get_temperature(api_key, year, month, day, hour, minute, duration):
+def get_temperature(api_key, year, month, day, hour, minute, duration, lat, lon):
     # +1h (CET) + 1h (if daylight saving applies)
     hour_adjustment = timedelta(
         hours=1 + (1 if is_summer_time(year, month, day) else 0)
     )
-    print(f"hour_adjustment: {hour_adjustment}")
 
     start_timestamp = (
         datetime.datetime(year, month, day, hour=hour, minute=minute) - hour_adjustment
@@ -201,333 +145,13 @@ def get_temperature(api_key, year, month, day, hour, minute, duration):
     mid_timestamp = int((start_timestamp + end_timestamp) / 2)
     url = f"https://api.openweathermap.org/data/3.0/onecall/timemachine?lat={lat}&lon={lon}&dt={mid_timestamp}&appid={api_key}&units=metric"
     x = requests.get(url)
-    return x.json()["data"][0]["temp"]
+    if x.status_code == 200:
+        return x.json()["data"][0]["temp"]
+    return None
+
 
 
 def download_bird_list_from_aves():
-    genera = {
-        "slovak": [
-            "bažant",
-            "belorítka",
-            "bernikla",
-            "bocian",
-            "brehuľa",
-            "brehár",
-            "brhlík",
-            "bučiak",
-            "bučiačik",
-            "chavkoš",
-            "chochlačka",
-            "chochláč",
-            "chrapkáč",
-            "chriašteľ",
-            "cíbik",
-            "drop",
-            "drozd",
-            "dudok",
-            "dážďovník",
-            "fúzatka",
-            "glezg",
-            "hadiar",
-            "haja",
-            "havran",
-            "hlaholka",
-            "holub",
-            "hrdlička",
-            "hrdzavka",
-            "hus",
-            "hvizdák",
-            "húska",
-            "hýľ",
-            "ibis",
-            "jarabica",
-            "jariabok",
-            "jastrab",
-            "kajka",
-            "kalužiak",
-            "kamenár",
-            "kanárik",
-            "kavka",
-            "kazarka",
-            "kačica",
-            "kaňa",
-            "kolibkárik",
-            "kormorán",
-            "krahuľa",
-            "krakľa",
-            "krivonos",
-            "krkavec",
-            "krutihlav",
-            "králiček",
-            "kršiak",
-            "kukavica",
-            "kukučka",
-            "kulík",
-            "kuvik",
-            "kuvičok",
-            "kôrovník",
-            "kúdelníčka",
-            "labuť",
-            "lastovička",
-            "lastúrničiar",
-            "lelek",
-            "ležiak",
-            "lyska",
-            "lyskonoh",
-            "lyžičiar",
-            "mlynárka",
-            "močiarnica",
-            "muchár",
-            "muchárik",
-            "murárik",
-            "myšiak",
-            "myšiarka",
-            "orešnica",
-            "oriešok",
-            "orliak",
-            "orol",
-            "pelikán",
-            "penica",
-            "pinka",
-            "pipíška",
-            "plameniak",
-            "plamienka",
-            "pobrežník",
-            "pomorník",
-            "potápač",
-            "potápka",
-            "potáplica",
-            "potápnica",
-            "prepelica",
-            "prieložník",
-            "pôtik",
-            "pŕhľaviar",
-            "rybár",
-            "rybárik",
-            "sedmohlások",
-            "skaliar",
-            "skaliarik",
-            "sliepočka",
-            "sluka",
-            "slávik",
-            "snehárka",
-            "sojka",
-            "sokol",
-            "sova",
-            "stehlík",
-            "stepiar",
-            "straka",
-            "strakoš",
-            "strnádka",
-            "sup",
-            "svrčiak",
-            "sýkorka",
-            "tesár",
-            "tetrov",
-            "trasochvost",
-            "trsteniarik",
-            "turpan",
-            "vlha",
-            "vodnár",
-            "volavka",
-            "vrabec",
-            "vrana",
-            "vrchárka",
-            "výr",
-            "výrik",
-            "včelár",
-            "včelárik",
-            "čajka",
-            "čaplička",
-            "čavka",
-            "čorík",
-            "ďateľ",
-            "ľabtuška",
-            "šabliarka",
-            "šišila",
-            "škorec",
-            "škovránok",
-            "žeriav",
-            "žlna",
-            "žltochvost",
-        ],
-        "latin": [
-            "Accipiter",
-            "Acrocephalus",
-            "Actitis",
-            "Aegithalos",
-            "Aegolius",
-            "Aegypius",
-            "Alauda",
-            "Alcedo",
-            "Alopochen",
-            "Anas",
-            "Anser",
-            "Anthropoides",
-            "Anthus",
-            "Apus",
-            "Aquila",
-            "Ardea",
-            "Ardeola",
-            "Arenaria",
-            "Asio",
-            "Athene",
-            "Aythya",
-            "Bombycilla",
-            "Bonasa",
-            "Botaurus",
-            "Branta",
-            "Bubo",
-            "Bubulcus",
-            "Bucephala",
-            "Burhinus",
-            "Buteo",
-            "Calandrella",
-            "Calcarius",
-            "Calidris",
-            "Caprimulgus",
-            "Carduelis",
-            "Carpodacus",
-            "Certhia",
-            "Charadrius",
-            "Chettusia",
-            "Chlamydotis",
-            "Chlidonias",
-            "Ciconia",
-            "Cinclus",
-            "Circaetus",
-            "Circus",
-            "Clamator",
-            "Clangula",
-            "Coccothraustes",
-            "Columba",
-            "Coracias",
-            "Corvus",
-            "Coturnix",
-            "Crex",
-            "Cuculus",
-            "Cygnus",
-            "Delichon",
-            "Dendrocopos",
-            "Dryocopus",
-            "Egretta",
-            "Emberiza",
-            "Eremophila",
-            "Erithacus",
-            "Falco",
-            "Ficedula",
-            "Fringilla",
-            "Fulica",
-            "Galerida",
-            "Gallinago",
-            "Gallinula",
-            "Garrulus",
-            "Gavia",
-            "Gelochelidon",
-            "Glareola",
-            "Glaucidium",
-            "Grus",
-            "Gyps",
-            "Haematopus",
-            "Haliaeetus",
-            "Hieraaetus",
-            "Himantopus",
-            "Hippolais",
-            "Hirundo",
-            "Histrionicus",
-            "Ixobrychus",
-            "Jynx",
-            "Lanius",
-            "Larus",
-            "Limicola",
-            "Limosa",
-            "Locustella",
-            "Loxia",
-            "Lullula",
-            "Luscinia",
-            "Lymnocryptes",
-            "Melanitta",
-            "Mergellus",
-            "Mergus",
-            "Merops",
-            "Milvus",
-            "Monticola",
-            "Montifringilla",
-            "Motacilla",
-            "Muscicapa",
-            "Neophron",
-            "Netta",
-            "Nucifraga",
-            "Numenius",
-            "Nyctea",
-            "Nycticorax",
-            "Oenanthe",
-            "Oriolus",
-            "Otis",
-            "Otus",
-            "Oxyura",
-            "Pandion",
-            "Panurus",
-            "Parus",
-            "Passer",
-            "Pelecanus",
-            "Perdix",
-            "Perisoreus",
-            "Pernis",
-            "Phalacrocorax",
-            "Phalaropus",
-            "Phasianus",
-            "Philomachus",
-            "Phoenicopterus",
-            "Phoenicurus",
-            "Phylloscopus",
-            "Pica",
-            "Picoides",
-            "Picus",
-            "Pinicola",
-            "Platalea",
-            "Plectrophenax",
-            "Plegadis",
-            "Pluvialis",
-            "Podiceps",
-            "Porzana",
-            "Prunella",
-            "Pyrrhocorax",
-            "Pyrrhula",
-            "Rallus",
-            "Recurvirostra",
-            "Regulus",
-            "Remiz",
-            "Riparia",
-            "Rissa",
-            "Saxicola",
-            "Scolopax",
-            "Serinus",
-            "Sitta",
-            "Somateria",
-            "Stercorarius",
-            "Sterna",
-            "Streptopelia",
-            "Strix",
-            "Sturnus",
-            "Surnia",
-            "Sylvia",
-            "Syrrhaptes",
-            "Tachybaptus",
-            "Tadorna",
-            "Tetrao",
-            "Tetrax",
-            "Tichodroma",
-            "Tringa",
-            "Troglodytes",
-            "Turdus",
-            "Tyto",
-            "Upupa",
-            "Vanellus",
-            "Xenus",
-        ],
-    }
-
     for language in ["latin", "slovak"]:
         data = dict()
         for genus in genera[language]:
@@ -560,12 +184,8 @@ def get_args():
     parser = argparse.ArgumentParser(
         description="Convert GPX waypoint data into JSON data."
     )
-    parser.add_argument(
-        "--input_file", type=str, help="The GPX file to process", required=True
-    )
-    parser.add_argument(
-        "--output_file", type=str, help="The output JSON file name", required=True
-    )
+    parser.add_argument("-i", "--input_file", type=str, help="The GPX file to process", required=True)
+    parser.add_argument("-o", "--output_file", type=str, help="The output JSON file name", required=True)
     return parser.parse_args()
 
 
@@ -589,6 +209,8 @@ def main(args):
     year = 2022
     secrets = get_secrets()
     api_key = secrets["openweathermap_api_key"]
+    
+    # download_bird_list_from_aves()
     bird_list_latin, bird_list_slovak = load_bird_list()
 
     results = []
@@ -598,7 +220,7 @@ def main(args):
         lat = data_obj["lat"]
         lon = data_obj["lon"]
 
-        geo_str = f"POINT({lat} {lon})"
+        geo_str = f"POINT({lon} {lat})"
 
         print(f"===== {text} ======")
 
@@ -616,44 +238,42 @@ def main(args):
         numbers = get_number_from_text(text)
         print(f"numbers of birds: {numbers}")
 
-        sky_condition_level_code, sky_condition_level_name = get_weather_level(
+        sky_condition_level = get_weather_level(
             text, sky_condition_levels
         )
-        print(f"sky condition level: {sky_condition_level_name}")
+        print(f"sky condition level: {sky_condition_level}")
 
-        wind_level_code, wind_level_name = get_weather_level(text, wind_levels)
-        print(f"wind level: {wind_level_name}")
-
-        # download_bird_list_from_aves()
-
-        # print(bird_list_slovak)
+        wind_level = get_weather_level(text, wind_levels)
+        print(f"wind level: {wind_level}")
 
         top_bird_names = get_bird_names(
             text, [bird_list_slovak, bird_list_latin], n=5 * len(numbers)
         )
-        print(top_bird_names)
 
-        # temp = get_temperature(api_key, year, month, day, hour, minute, duration)
-        temp = 23.8
-        print(f"Temperature: {temp:.1f} degrees")
+        temp = get_temperature(api_key, year, month, day, hour, minute, duration, lat, lon)
+        temp_level = get_temperature_level(temp)
+        print(f"temperature: {temp:.1f} degrees\n\t{temp_level}")
 
-        bird_records = [{"number": n, "birds": top_bird_names} for n in numbers]
+        bird_records = [{
+            "number": n,
+            "characteristic": get_default_observation_characteristic(month),
+            "method": get_default_observation_method(text),
+            "birds": top_bird_names
+        } for n in numbers]
 
         result = {
             "text": text,
             "geo_str": geo_str,
             "year": year,
-            "month": month,
             "day": day,
+            "month": month,
             "hour": hour,
             "minute": minute,
             "hour_to": hour_to,
             "minute_to": minute_to,
-            "sky_condition_level": sky_condition_level_code,
-            "sky_condition_level_name": sky_condition_level_name,
-            "wind_level": wind_level_code,
-            "wind_level_name": wind_level_name,
-            "temperature": temp,
+            "sky_condition_level": sky_condition_level,
+            "wind_level": wind_level,
+            "temperature_level": temp_level,
             "bird_records": bird_records,
         }
         results.append(result)
