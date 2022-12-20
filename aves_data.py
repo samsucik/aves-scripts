@@ -32,7 +32,7 @@ sky_condition_levels = [
 ]
 
 wind_levels = [
-    {"name": "bezvetrie", "code": 1, "descriptive_words": ["bezvetrie", "bezv"]},
+    {"name": "bezvetrie", "code": 1, "descriptive_words": ["bezvetrie", "bezv", "bwzv"]},
     {
         "name": "slabý vietor (vietor pohybuje iba listami na stromoch, ale nie konármi)",
         "code": 2,
