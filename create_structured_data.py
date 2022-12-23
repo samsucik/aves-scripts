@@ -9,9 +9,9 @@ import unicodedata
 import gpxpy
 import argparse
 
-from aves_data import sky_condition_levels, wind_levels, observation_characteristics, observation_methods, temperature_levels, genera
+from aves_data import sky_condition_levels, wind_levels, temperature_levels
+import bird_species
 
-aves_bird_list_file = "aves_birds"
 name_sim_threshold = 50
 
 
@@ -21,17 +21,21 @@ def get_default_observation_method(text):
             return {"name": "AKUSTICKY MONITORING - akustický monitoring", "code": "15"}
     return {"name": "VIZUAL - vizuálne pozorovanie", "code": "8"}
 
+
 def get_temperature_level(temp):
     for level in temperature_levels:
         if temp < max(level["range"]) and temp >= min(level["range"]):
             return level
     return None
 
+
 def get_default_observation_characteristic(month):
     if month >= 4 and month < 8:
         return {"name": "A0 - výskyt od 1.4. do 31.7.", "code": "19"}
     else:
-        return {"name": "M_MV - migrácia alebo výskyt v mimohniezdnom období", "code": "36"}
+        return {
+            "name": "M_MV - migrácia alebo výskyt v mimohniezdnom období", "code": "36"}
+
 
 def strip_accents(s):
     return "".join(
@@ -60,22 +64,46 @@ def get_weather_level(text, weather_level_data):
     return weather_level_data[top_result_idx]
 
 
-def get_bird_names(text, bird_lists, n):
+def get_bird_names(text, species, n):
     candidates = []
-    for bird_list in bird_lists:
-        candidates_for_language = []
-        for bird_name, bird_code in bird_list.items():
-            sim1 = fuzz.partial_ratio(
-                strip_accents(text).lower(), strip_accents(bird_name).lower()
-            )
-            first_part_of_name = strip_accents(bird_name).lower().strip().split(" ")[0]
-            sim2 = fuzz.partial_ratio(strip_accents(text).lower(), first_part_of_name)
-            if sim1 > name_sim_threshold or sim2 > name_sim_threshold:
-                candidates_for_language.append((max(sim1, sim2), bird_name, bird_code))
-        candidates.extend(candidates_for_language)
+    max_n_records = max(species_data["n_records"] for species_data in species)
+
+    for species_data in species:
+        names = []
+        if species_data["name_sk"] is not None:
+            names.append(species_data["name_sk"])
+        if species_data["name_lat"] is not None:
+            names.append(
+                bird_species.remove_citation_from_scientific_name(
+                    species_data["name_lat"]))
+
+        # similarity with full name
+        sim_full = max(fuzz.partial_ratio(
+            strip_accents(text).lower(), strip_accents(name).lower()) for name in names
+        )
+
+        # similarity with parts of name
+        sim_partial = []
+        for name in names:
+            for part in strip_accents(name).lower().strip().split(" "):
+                sim_partial.append(
+                    fuzz.partial_ratio(strip_accents(text).lower(), part)
+                )
+        sim_partial = max(sim_partial)
+
+        max_sim = max(sim_full, sim_partial)
+        if max_sim > name_sim_threshold:
+            # max_sim is between name_sim_threshold and 100, we reward with up to 5
+            # additional points species with lots of records in the Aves database
+            score = max_sim + 5 * species_data["n_records"] / max_n_records
+            candidates.append([score, names[0], species_data["species_id"]])
 
     if len(candidates) > 0:
         candidates.sort(key=lambda t: t[0], reverse=True)
+
+    # remove scores (used only for ordering the species)
+    candidates = [cand[1:] for cand in candidates]
+
     return candidates[:n]
 
 
@@ -150,42 +178,22 @@ def get_temperature(api_key, year, month, day, hour, minute, duration, lat, lon)
     return None
 
 
-
-def download_bird_list_from_aves():
-    for language in ["latin", "slovak"]:
-        data = dict()
-        for genus in genera[language]:
-            url = f"http://aves.vtaky.sk/sk/zoology/ajaxLkpzoospecies/action?q={genus}"
-            x = requests.get(url)
-            if x.status_code == 200:
-                results = x.json()
-                results = {v: k for k, v in results.items()}
-                if not (
-                    len(results) == 1
-                    and list(results.keys())[0] == "ERROR: unknown species!"
-                ):
-                    print(f"{genus}: {results}")
-                    data.update(results)
-
-        with open(f"{aves_bird_list_file}_{language}.json", "w") as f:
-            json.dump(data, f)
-
-
-def load_bird_list():
-    bird_lists = []
-    for language in ["latin", "slovak"]:
-        with open(f"{aves_bird_list_file}_{language}.json", "r") as f:
-            bird_list = json.load(f)
-            bird_lists.append(bird_list)
-    return bird_lists
-
-
 def get_args():
     parser = argparse.ArgumentParser(
         description="Convert GPX waypoint data into JSON data."
     )
-    parser.add_argument("-i", "--input_file", type=str, help="The GPX file to process", required=True)
-    parser.add_argument("-o", "--output_file", type=str, help="The output JSON file name", required=True)
+    parser.add_argument(
+        "-i",
+        "--input_file",
+        type=str,
+        help="The GPX file to process",
+        required=True)
+    parser.add_argument(
+        "-o",
+        "--output_file",
+        type=str,
+        help="The output JSON file name",
+        required=True)
     return parser.parse_args()
 
 
@@ -209,9 +217,8 @@ def main(args):
     year = 2022
     secrets = get_secrets()
     api_key = secrets["openweathermap_api_key"]
-    
-    # download_bird_list_from_aves()
-    bird_list_latin, bird_list_slovak = load_bird_list()
+
+    species = bird_species.get_species()
 
     results = []
     data_raw = get_raw_data(args.input_file)
@@ -247,10 +254,20 @@ def main(args):
         print(f"wind level: {wind_level}")
 
         top_bird_names = get_bird_names(
-            text, [bird_list_slovak, bird_list_latin], n=5 * len(numbers)
+            text, species, n=5 * len(numbers)
         )
+        print(top_bird_names)
 
-        temp = get_temperature(api_key, year, month, day, hour, minute, duration, lat, lon)
+        temp = get_temperature(
+            api_key,
+            year,
+            month,
+            day,
+            hour,
+            minute,
+            duration,
+            lat,
+            lon)
         temp_level = get_temperature_level(temp)
         print(f"temperature: {temp:.1f} degrees\n\t{temp_level}")
 
@@ -278,8 +295,8 @@ def main(args):
         }
         results.append(result)
 
-    with open(args.output_file, "w") as f:
-        json.dump(results, f, indent=4)
+    with open(args.output_file, "w", encoding="utf8") as f:
+        json.dump(results, f, indent=4, ensure_ascii=False)
 
 
 if __name__ == "__main__":
