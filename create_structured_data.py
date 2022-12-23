@@ -15,6 +15,10 @@ import bird_species
 name_sim_threshold = 50
 
 
+def get_dict_subset(dct, keys):
+    return dict((key, dct[key]) for key in keys)
+
+
 def get_default_observation_method(text):
     for word in ["ozyva", r"vola[^v]", "spieva"]:
         if re.search(word, text):
@@ -25,7 +29,7 @@ def get_default_observation_method(text):
 def get_temperature_level(temp):
     for level in temperature_levels:
         if temp < max(level["range"]) and temp >= min(level["range"]):
-            return level
+            return get_dict_subset(level, ["name", "code"])
     return None
 
 
@@ -61,7 +65,7 @@ def get_weather_level(text, weather_level_data):
 
     top_result_idx = max(scores, key=scores.get)
 
-    return weather_level_data[top_result_idx]
+    return get_dict_subset(weather_level_data[top_result_idx], ["name", "code"])
 
 
 def get_bird_names(text, species, n):
