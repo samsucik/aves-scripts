@@ -162,7 +162,9 @@ def is_summer_time(year, month, day):
     return timezone_aware_date.tzinfo._dst.seconds != 0
 
 
-def get_temperature(api_key, year, month, day, hour, minute, duration, lat, lon):
+def get_temperature(api_key, year, month, day, hour, minute, duration, lat, lon, mock):
+    if mock:
+        return -30
     # +1h (CET) + 1h (if daylight saving applies)
     hour_adjustment = timedelta(
         hours=1 + (1 if is_summer_time(year, month, day) else 0)
@@ -201,6 +203,11 @@ def get_args():
         type=str,
         help="The output JSON file name",
         required=True)
+    parser.add_argument(
+        "--mock",
+        type=bool,
+        help="Whether to mock API calls",
+        default=False)
     return parser.parse_args()
 
 
@@ -351,7 +358,8 @@ def main(args):
             minute,
             duration,
             lat,
-            lon)
+            lon,
+            mock=args.mock)
         idx, temp_level = get_temperature_level(temp, temperature_levels)
         temp_level = let_user_choose_option(
             f"temperature level (records show t={temp}°C)", temperature_levels, idx)
