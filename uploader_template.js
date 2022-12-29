@@ -24,6 +24,7 @@ for (species_data of all_species_data) {{
 
 	$(".sf_admin_form_field_detail" + counter + " #mytgb").click()
 	$("#zoology_detail_" + counter + "_lkpzoomet_id").val(species_data["observation_method"])
+	$("#zoology_detail_" + counter + "_description").val(species_data["note"])
 
 	counter += 1
 }}

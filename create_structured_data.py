@@ -267,6 +267,16 @@ def let_user_enter_number(default, message="How many?"):
     return answer["value"]
 
 
+def let_user_enter_note(message="Note (optional):"):
+    question = {
+        "type": "input",
+        "name": "value",
+        "message": message
+    }
+    answer = prompt.prompt([question])
+    return answer["value"]
+
+
 def main(args):
     year = 2022
     secrets = get_secrets()
@@ -320,11 +330,14 @@ def main(args):
             number = let_user_enter_number(
                 default=1 if i >= len(extracted_numbers) else extracted_numbers[i])
 
+            note = let_user_enter_note()
+
             bird_records.append({
                 "number": number,
                 "characteristic": default_observation_characteristic,
                 "method": get_default_observation_method(text),
-                "species": selected_species
+                "species": selected_species,
+                "note": note
             })
 
             i += 1

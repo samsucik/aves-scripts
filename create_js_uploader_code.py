@@ -15,7 +15,8 @@ if __name__ == "__main__":
                 "name": r["species"]["name_sk"],
                 "count": r["number"],
                 "observation_characteristic": r["characteristic"]["code"],
-                "observation_method": r["method"]["code"]
+                "observation_method": r["method"]["code"],
+                "note": r["note"]
             } for r in data["bird_records"]]
         else:
             data_to_inject["bird_records"] = []
