@@ -114,7 +114,7 @@ def get_species():
             "species_id": species_id,
             "n_records": species_record_stats.get(species_id, 0)
         })
-    return species
+    return sorted(species, key=lambda spec: spec["n_records"], reverse=True)
 
 
 def main():

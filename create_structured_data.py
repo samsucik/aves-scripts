@@ -8,6 +8,7 @@ from thefuzz import fuzz
 import unicodedata
 import gpxpy
 import argparse
+from PyInquirer import prompt
 
 from aves_data import sky_condition_levels, wind_levels, temperature_levels
 import bird_species
@@ -26,11 +27,11 @@ def get_default_observation_method(text):
     return {"name": "VIZUAL - vizuálne pozorovanie", "code": "8"}
 
 
-def get_temperature_level(temp):
-    for level in temperature_levels:
+def get_temperature_level(temp, temperature_levels):
+    for i, level in enumerate(temperature_levels):
         if temp < max(level["range"]) and temp >= min(level["range"]):
-            return get_dict_subset(level, ["name", "code"])
-    return None
+            return i, get_dict_subset(level, ["name", "code"])
+    return None, None
 
 
 def get_default_observation_characteristic(month):
@@ -65,7 +66,8 @@ def get_weather_level(text, weather_level_data):
 
     top_result_idx = max(scores, key=scores.get)
 
-    return get_dict_subset(weather_level_data[top_result_idx], ["name", "code"])
+    return top_result_idx, get_dict_subset(
+        weather_level_data[top_result_idx], ["name", "code"])
 
 
 def get_bird_names(text, species, n):
@@ -100,13 +102,14 @@ def get_bird_names(text, species, n):
             # max_sim is between name_sim_threshold and 100, we reward with up to 5
             # additional points species with lots of records in the Aves database
             score = max_sim + 5 * species_data["n_records"] / max_n_records
-            candidates.append([score, names[0], species_data["species_id"]])
+            candidates.append(
+                {"score": score, "name": names[0], "species_id": species_data["species_id"]})
 
     if len(candidates) > 0:
-        candidates.sort(key=lambda t: t[0], reverse=True)
+        candidates.sort(key=lambda t: t["score"], reverse=True)
 
     # remove scores (used only for ordering the species)
-    candidates = [cand[1:] for cand in candidates]
+    candidates = [get_dict_subset(cand, ["name", "species_id"]) for cand in candidates]
 
     return candidates[:n]
 
@@ -116,7 +119,7 @@ def get_secrets():
         return json.load(f)
 
 
-def get_number_from_text(text):
+def get_numbers_from_text(text):
     matches = re.findall(r"\d+(?=x)", text)
     if not matches:
         matches = re.findall(r"(?<![:0-9/.])\d+(?![:0-9/.])", text)
@@ -217,6 +220,53 @@ def get_raw_data(input_file):
     return data
 
 
+def let_user_choose_option(name, options, default_idx):
+    question = {
+        "type": "list",
+        "name": "value",
+        "message": f"Choose {name}:",
+        "choices": [{"name": option["name"], "value": i} for i, option in enumerate(options)],
+        "default": default_idx
+    }
+    answer = prompt.prompt([question])
+    return options[answer["value"]]
+
+
+def let_user_search_for_species(species_all):
+    choices = []
+    for i, species in enumerate(species_all):
+        if species["name_sk"] and species["name_lat"]:
+            name = f"{species['name_sk'].strip()} - {species['name_lat'].strip()}"
+        else:
+            name = species["name_sk"].strip() if species["name_sk"] else species[
+                "name_lat"].strip()
+        choices.append({
+            "name": name,
+            "name_for_search": strip_accents(name).lower(),
+            "value": i
+        })
+    question = {
+        "type": "searchable_menu",
+        "name": "value",
+        "message": "Choose species (type to filter):",
+        "choices": choices
+    }
+    answer = prompt.prompt([question])
+    return species_all[answer["value"]] if answer != {} else None
+
+
+def let_user_enter_number(default, message="How many?"):
+    question = {
+        "type": "input",
+        "name": "value",
+        "message": message,
+        "default": str(default),
+        "filter": lambda num: int(num)
+    }
+    answer = prompt.prompt([question])
+    return answer["value"]
+
+
 def main(args):
     year = 2022
     secrets = get_secrets()
@@ -241,26 +291,41 @@ def main(args):
         day, month, hour, minute, duration = dt
         if duration is None:
             duration = timedelta(minutes=2)
-        print(day, month, hour, minute, duration)
+        # print(day, month, hour, minute, duration)
         dt_to = datetime.datetime(year, month, day, hour=hour, minute=minute) + duration
         hour_to = dt_to.hour
         minute_to = dt_to.minute
 
-        numbers = get_number_from_text(text)
-        print(f"numbers of birds: {numbers}")
-
-        sky_condition_level = get_weather_level(
+        idx, sky_condition_level = get_weather_level(
             text, sky_condition_levels
         )
-        print(f"sky condition level: {sky_condition_level}")
+        sky_condition_level = let_user_choose_option("sky condition level",
+                                                     sky_condition_levels, idx)
 
-        wind_level = get_weather_level(text, wind_levels)
-        print(f"wind level: {wind_level}")
+        idx, wind_level = get_weather_level(text, wind_levels)
+        wind_level = let_user_choose_option("wind level", wind_levels, idx)
 
-        top_bird_names = get_bird_names(
-            text, species, n=5 * len(numbers)
-        )
-        print(top_bird_names)
+        bird_records = []
+
+        extracted_numbers = get_numbers_from_text(text)
+
+        i = 0
+        while True:
+            selected_species = let_user_search_for_species(species)
+            if selected_species is None:
+                break
+
+            number = let_user_enter_number(
+                default=1 if i >= len(extracted_numbers) else extracted_numbers[i])
+
+            bird_records.append({
+                "number": number,
+                "characteristic": get_default_observation_characteristic(month),
+                "method": get_default_observation_method(text),
+                "species": selected_species
+            })
+
+            i += 1
 
         temp = get_temperature(
             api_key,
@@ -272,15 +337,9 @@ def main(args):
             duration,
             lat,
             lon)
-        temp_level = get_temperature_level(temp)
-        print(f"temperature: {temp:.1f} degrees\n\t{temp_level}")
-
-        bird_records = [{
-            "number": n,
-            "characteristic": get_default_observation_characteristic(month),
-            "method": get_default_observation_method(text),
-            "birds": top_bird_names
-        } for n in numbers]
+        idx, temp_level = get_temperature_level(temp, temperature_levels)
+        temp_level = let_user_choose_option(
+            f"temperature level (records show t={temp}°C)", temperature_levels, idx)
 
         result = {
             "text": text,
