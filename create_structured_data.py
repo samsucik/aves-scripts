@@ -34,12 +34,12 @@ def get_temperature_level(temp, temperature_levels):
     return None, None
 
 
-def get_default_observation_characteristic(month):
+def get_default_observation_characteristic(month, day):
     if month >= 4 and month < 8:
         return {"name": "A0 - výskyt od 1.4. do 31.7.", "code": "19"}
-    else:
-        return {
-            "name": "M_MV - migrácia alebo výskyt v mimohniezdnom období", "code": "36"}
+    elif month in [12, 1] or (month == 2 and day <= 15):
+        return {"name": "ZIMOVANIE - zimovanie", "code": "70"}
+    return {"name": "M_MV - migrácia alebo výskyt v mimohniezdnom období", "code": "36"}
 
 
 def strip_accents(s):
@@ -308,6 +308,8 @@ def main(args):
         bird_records = []
 
         extracted_numbers = get_numbers_from_text(text)
+        default_observation_characteristic = get_default_observation_characteristic(
+            month, day)
 
         i = 0
         while True:
@@ -320,7 +322,7 @@ def main(args):
 
             bird_records.append({
                 "number": number,
-                "characteristic": get_default_observation_characteristic(month),
+                "characteristic": default_observation_characteristic,
                 "method": get_default_observation_method(text),
                 "species": selected_species
             })
