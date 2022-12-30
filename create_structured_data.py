@@ -308,7 +308,7 @@ def main(args):
         day, month, hour, minute, duration = dt
         if duration is None:
             duration = timedelta(minutes=2)
-        # print(day, month, hour, minute, duration)
+        print(f"{day}.{month}.{year} {hour}:{minute} ({duration})")
         dt_to = datetime.datetime(year, month, day, hour=hour, minute=minute) + duration
         hour_to = dt_to.hour
         minute_to = dt_to.minute

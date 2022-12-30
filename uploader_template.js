@@ -16,6 +16,7 @@ counter = 1
 for (species_data of all_species_data) {{
 	if (counter > 1) {{
 		$("#sf_fieldset_none > div.detailsFieldset > table > tbody > tr > td > div > div.content > div.help > a").click()
+		await new Promise(r => setTimeout(r, 500));
 	}}
 	$("#zoology_detail_" + counter + "_lkpzoospecies_id").val(species_data["species_id"])
 	$("#autocomplete_zoology_detail_" + counter + "_lkpzoospecies_id").val(species_data["name"])
@@ -24,7 +25,9 @@ for (species_data of all_species_data) {{
 
 	$(".sf_admin_form_field_detail" + counter + " #mytgb").click()
 	$("#zoology_detail_" + counter + "_lkpzoomet_id").val(species_data["observation_method"])
-	$("#zoology_detail_" + counter + "_description").val(species_data["note"])
+	if (species_data["note"] != '') {{
+		$("#zoology_detail_" + counter + "_description").val(species_data["note"])
+	}}
 
 	counter += 1
 }}

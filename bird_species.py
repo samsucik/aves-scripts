@@ -1,19 +1,16 @@
 from pyquery import PyQuery as pq
 import requests
 import re
-# import os.path
-# from pathlib import Path
 from tqdm import tqdm
 import json
-# import argparse
 
 from aves_data import genera
 
 aves_bird_list_file = "aves_birds"
 
 
-def download_species_list_from_aves():
-    for language in ["latin", "slovak"]:
+def download_species_list_from_aves(languages=["latin", "slovak"]):
+    for language in languages:
         data = dict()
         pbar = tqdm(genera[language], desc=f"{language} genera")
         for genus in pbar:
@@ -118,7 +115,7 @@ def get_species():
 
 
 def main():
-    # download_species_list_from_aves()
+    download_species_list_from_aves(languages=["latin", "slovak"])
     print(get_species())
 
 
