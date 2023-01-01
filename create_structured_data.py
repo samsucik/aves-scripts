@@ -9,6 +9,7 @@ import unicodedata
 import gpxpy
 import argparse
 from PyInquirer import prompt
+import pandas as pd
 
 from aves_data import sky_condition_levels, wind_levels, temperature_levels
 import bird_species
@@ -284,12 +285,37 @@ def let_user_enter_note(message="Note (optional):"):
     return answer["value"]
 
 
+def let_user_search_for_land_structure(df):
+    choices = []
+    for i, land_struct_type in df.iterrows():
+        children = df[df["position"].str.match(f"{land_struct_type['position']}([0-9]+\.)+")]
+        children_names = [ch["name"] for _, ch in children.iterrows()]
+        name_for_search = strip_accents(
+            ", ".join([land_struct_type["name"]] + children_names)).lower()
+        depth = land_struct_type["position"].count(".")
+        choices.append({
+            "name": " " * (depth - 1) + land_struct_type["name"],
+            "name_for_search": name_for_search,
+            "value": i
+        })
+    question = {
+        "type": "searchable_menu",
+        "name": "value",
+        "message": "Choose land structure type (type to filter):",
+        "choices": choices,
+        "strip_answer": True
+    }
+    answer = prompt.prompt([question])
+    return int(dict(df.iloc[answer["value"]])["code"]) if answer != {} else None
+
+
 def main(args):
     year = 2022
     secrets = get_secrets()
     api_key = secrets["openweathermap_api_key"]
 
     species = bird_species.get_species()
+    land_structures_df = pd.read_csv("land_structure.csv", sep=";", dtype={"code": int})
 
     results = []
     data_raw = get_raw_data(args.input_file)
@@ -339,12 +365,18 @@ def main(args):
 
             note = let_user_enter_note()
 
+            land_structure_type_code = let_user_search_for_land_structure(
+                land_structures_df)
+            # for k, v in land_structure_type.items():
+            #     print(k, type(k), v, type(v))
+
             bird_records.append({
                 "number": number,
                 "characteristic": default_observation_characteristic,
                 "method": get_default_observation_method(text),
                 "species": selected_species,
-                "note": note
+                "note": note,
+                "land_structure_type": land_structure_type_code
             })
 
             i += 1

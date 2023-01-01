@@ -28,6 +28,9 @@ for (species_data of all_species_data) {{
 	if (species_data["note"] != '') {{
 		$("#zoology_detail_" + counter + "_description").val(species_data["note"])
 	}}
+	if (species_data["land_structure_type"] != '') {{
+		$("#zoology_detail_" + counter + "_lkplandstructure_id").val(species_data["land_structure_type"])
+	}}
 
 	counter += 1
 }}

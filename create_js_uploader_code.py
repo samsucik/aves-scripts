@@ -16,7 +16,8 @@ if __name__ == "__main__":
                 "count": r["number"],
                 "observation_characteristic": r["characteristic"]["code"],
                 "observation_method": r["method"]["code"],
-                "note": r["note"]
+                "note": r["note"],
+                "land_structure_type": r["land_structure_type"] if r["land_structure_type"] is not None else ""
             } for r in data["bird_records"]]
         else:
             data_to_inject["bird_records"] = []
