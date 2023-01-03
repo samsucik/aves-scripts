@@ -30,8 +30,8 @@ code;position;name;synonyms
 30;1.4.1.;mestská zeleň;
 31;1.4.2.;areály športu a voľného času;
 32;2.;poľnohospodárske areály;
-33;2.1.;orná pôda;
-34;2.1.1.;nezavlažovaná orná pôda;
+33;2.1.;orná pôda;pole
+34;2.1.1.;nezavlažovaná orná pôda;pole
 35;2.1.1.1.;zelenina;
 36;2.1.1.1.1.;ľuľkovité;
 37;2.1.1.1.1.1.;paprika;
@@ -168,11 +168,11 @@ code;position;name;synonyms
 168;3.;lesy a poloprírodné areály;
 169;3.1.;lesná a nelesná drevinová vegetácia;
 170;3.1.1.;listnaté lesy;
-171;3.1.1.1.;prírodné, prírode blízke, prirodzené;
-172;3.1.1.2.;listnaté kultúry;
+171;3.1.1.1.;prírodné, prírode blízke, prirodzené;les
+172;3.1.1.2.;listnaté kultúry;les
 173;3.1.2.;ihličnaté lesy;
-174;3.1.2.1.;prírodné, prírode blízke, prirodzené;
-175;3.1.2.2.;ihličnaté kultúry;
+174;3.1.2.1.;prírodné, prírode blízke, prirodzené;les
+175;3.1.2.2.;ihličnaté kultúry;les
 176;3.1.3.;zmiešané lesy;
 177;3.1.3.1.;prírodné, prírode blízke, prirodzené;
 178;3.1.3.2.;zmiešané kultúry;
