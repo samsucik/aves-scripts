@@ -172,6 +172,7 @@ genera = {
         "kazarka",
         "kačica",
         "kaňa",
+        "kolibiarik",
         "kolibkárik",
         "kormorán",
         "krahuľa",
