@@ -1,4 +1,5 @@
 import json
+import pyperclip
 
 if __name__ == "__main__":
     with open("uploader_template.js", "r") as f:
@@ -32,3 +33,4 @@ if __name__ == "__main__":
         uploader_code = uploader_template.format(**data_to_inject)
         input("\n\nPress Enter to continue.\n\n")
         print(uploader_code)
+        pyperclip.copy(uploader_code)
