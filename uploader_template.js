@@ -1,3 +1,5 @@
+const supported_agesex_classes = ["add", "sad", "juv", "imm", "pull", "male", "maleadd", "malesad", "malejuv", "female", "femaleadd", "femalesad", "femalejuv"];
+
 $("#zoology_zoology_geom").val("{geo_str}")
 $("#zoology_zoology_date_day").val({day})
 $("#zoology_zoology_date_month").val({month})
@@ -20,7 +22,7 @@ for (species_data of all_species_data) {{
 	}}
 	$("#zoology_detail_" + counter + "_lkpzoospecies_id").val(species_data["species_id"])
 	$("#autocomplete_zoology_detail_" + counter + "_lkpzoospecies_id").val(species_data["name"])
-	$("#zoology_detail_" + counter + "_count").val(species_data["count"])
+	$("#zoology_detail_" + counter + "_count").val(species_data["counts"]["overall"])
 	$("#zoology_detail_" + counter + "_lkpzoochar_id").val(species_data["observation_characteristic"])
 
 	$(".sf_admin_form_field_detail" + counter + " #mytgb").click()
@@ -30,6 +32,12 @@ for (species_data of all_species_data) {{
 	}}
 	if (species_data["land_structure_type"] != '') {{
 		$("#zoology_detail_" + counter + "_lkplandstructure_id").val(species_data["land_structure_type"])
+	}}
+
+	for (const [key, value] of Object.entries(species_data["counts"])) {{
+		if (supported_agesex_classes.includes(key)) {{
+			$("#zoology_detail_" + counter + "_number_" + key).val(value)
+		}}
 	}}
 
 	counter += 1

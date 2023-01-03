@@ -13,7 +13,7 @@ if __name__ == "__main__":
             data_to_inject["bird_records"] = [{
                 "species_id": r["species"]["species_id"],
                 "name": r["species"]["name_sk"],
-                "count": r["number"],
+                "counts": r["number"],
                 "observation_characteristic": r["characteristic"]["code"],
                 "observation_method": r["method"]["code"],
                 "note": r["note"],
