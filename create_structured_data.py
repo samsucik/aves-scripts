@@ -264,12 +264,62 @@ def let_user_search_for_species(species_all):
 
 
 def let_user_enter_number(default, message="How many?"):
+    age_mapping = {
+        "a": "add",
+        "s": "sad",
+        "j": "juv",
+        "i": "imm",
+        "p": "pull"
+    }
+    sex_mapping = {
+        "m": "male",
+        "f": "female",
+    }
+
+    def _extract_numbers_from_answer(a):
+        parts = a.split(",")
+        result = {}
+        for part in parts:
+            part = part.strip()
+            if part == "":
+                continue
+            ages = [
+                age_val for age_key,
+                age_val in age_mapping.items() if age_key in part]
+            assert len(ages) in [0, 1], f"can't extract one age category from '{part}'"
+            sexes = [
+                sex_val for sex_key,
+                sex_val in sex_mapping.items() if sex_key in part]
+            assert len(sexes) in [0, 1], f"can't extract one sex category from '{part}'"
+
+            numbers = re.findall(r"\d+", part)
+            assert len(numbers) == 1, f"can't extract one number from '{part}'"
+            number = int(numbers[0])
+
+            if "o" in part:
+                result["other"] = number
+                continue
+
+            if len(ages) + len(sexes) == 0:
+                result["overall"] = number
+            else:
+                category = (sexes[0] if len(sexes) > 0 else "") + \
+                    (ages[0] if len(ages) > 0 else "")
+                result[category] = number
+
+        if "overall" not in result:
+            result["overall"] = sum(result.values())
+        if "other" in result:
+            del result["other"]
+
+        return result
+
     question = {
         "type": "input",
         "name": "value",
         "message": message,
         "default": str(default),
-        "filter": lambda num: int(num)
+        "filter": _extract_numbers_from_answer
     }
     answer = prompt.prompt([question])
     return answer["value"]
