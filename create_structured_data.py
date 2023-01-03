@@ -309,6 +309,100 @@ def let_user_search_for_land_structure(df):
     return int(dict(df.iloc[answer["value"]])["code"]) if answer != {} else None
 
 
+def create_result_from_raw_data(data_obj, year, species_list, land_structures_list,
+                                temperature_api_key):
+    text = data_obj["text"]
+    lat = data_obj["lat"]
+    lon = data_obj["lon"]
+
+    geo_str = f"POINT({lon} {lat})"
+
+    print(f"===== {text} ======")
+
+    dt = get_datetime_from_text(text)
+    if dt is None:
+        return None
+
+    day, month, hour, minute, duration = dt
+    if duration is None:
+        duration = timedelta(minutes=2)
+    print(f"{day}.{month}.{year} {hour}:{minute} ({duration})")
+    dt_to = datetime.datetime(year, month, day, hour=hour, minute=minute) + duration
+    hour_to = dt_to.hour
+    minute_to = dt_to.minute
+
+    idx, sky_condition_level = get_weather_level(
+        text, sky_condition_levels
+    )
+    sky_condition_level = let_user_choose_option("sky condition level",
+                                                 sky_condition_levels, idx)
+
+    idx, wind_level = get_weather_level(text, wind_levels)
+    wind_level = let_user_choose_option("wind level", wind_levels, idx)
+
+    bird_records = []
+
+    extracted_numbers = get_numbers_from_text(text)
+    default_observation_characteristic = get_default_observation_characteristic(
+        month, day)
+
+    i = 0
+    while True:
+        selected_species = let_user_search_for_species(species_list)
+        if selected_species is None:
+            break
+
+        number = let_user_enter_number(
+            default=1 if i >= len(extracted_numbers) else extracted_numbers[i])
+
+        note = let_user_enter_note()
+
+        land_structure_type_code = let_user_search_for_land_structure(
+            land_structures_list)
+
+        bird_records.append({
+            "number": number,
+            "characteristic": default_observation_characteristic,
+            "method": get_default_observation_method(text),
+            "species": selected_species,
+            "note": note,
+            "land_structure_type": land_structure_type_code
+        })
+
+        i += 1
+
+    temp = get_temperature(
+        temperature_api_key,
+        year,
+        month,
+        day,
+        hour,
+        minute,
+        duration,
+        lat,
+        lon,
+        mock=args.mock)
+    idx, temp_level = get_temperature_level(temp, temperature_levels)
+    temp_level = let_user_choose_option(
+        f"temperature level (records show t={temp}°C)", temperature_levels, idx)
+
+    return {
+        "text": text,
+        "geo_str": geo_str,
+        "year": year,
+        "day": day,
+        "month": month,
+        "hour": hour,
+        "minute": minute,
+        "hour_to": hour_to,
+        "minute_to": minute_to,
+        "sky_condition_level": sky_condition_level,
+        "wind_level": wind_level,
+        "temperature_level": temp_level,
+        "bird_records": bird_records,
+    }
+
+
 def main(args):
     year = 2022
     secrets = get_secrets()
@@ -320,98 +414,19 @@ def main(args):
     results = []
     data_raw = get_raw_data(args.input_file)
     for data_obj in data_raw:
-        text = data_obj["text"]
-        lat = data_obj["lat"]
-        lon = data_obj["lon"]
+        try:
+            result = create_result_from_raw_data(
+                data_obj,
+                year=year,
+                species_list=species,
+                land_structures_list=land_structures_df,
+                temperature_api_key=api_key)
+        except Exception as e:
+            print(f"Processing raw observation data for this record failed with the following exception: {e}")
+            result = None
 
-        geo_str = f"POINT({lon} {lat})"
-
-        print(f"===== {text} ======")
-
-        dt = get_datetime_from_text(text)
-        if dt is None:
-            continue
-        day, month, hour, minute, duration = dt
-        if duration is None:
-            duration = timedelta(minutes=2)
-        print(f"{day}.{month}.{year} {hour}:{minute} ({duration})")
-        dt_to = datetime.datetime(year, month, day, hour=hour, minute=minute) + duration
-        hour_to = dt_to.hour
-        minute_to = dt_to.minute
-
-        idx, sky_condition_level = get_weather_level(
-            text, sky_condition_levels
-        )
-        sky_condition_level = let_user_choose_option("sky condition level",
-                                                     sky_condition_levels, idx)
-
-        idx, wind_level = get_weather_level(text, wind_levels)
-        wind_level = let_user_choose_option("wind level", wind_levels, idx)
-
-        bird_records = []
-
-        extracted_numbers = get_numbers_from_text(text)
-        default_observation_characteristic = get_default_observation_characteristic(
-            month, day)
-
-        i = 0
-        while True:
-            selected_species = let_user_search_for_species(species)
-            if selected_species is None:
-                break
-
-            number = let_user_enter_number(
-                default=1 if i >= len(extracted_numbers) else extracted_numbers[i])
-
-            note = let_user_enter_note()
-
-            land_structure_type_code = let_user_search_for_land_structure(
-                land_structures_df)
-            # for k, v in land_structure_type.items():
-            #     print(k, type(k), v, type(v))
-
-            bird_records.append({
-                "number": number,
-                "characteristic": default_observation_characteristic,
-                "method": get_default_observation_method(text),
-                "species": selected_species,
-                "note": note,
-                "land_structure_type": land_structure_type_code
-            })
-
-            i += 1
-
-        temp = get_temperature(
-            api_key,
-            year,
-            month,
-            day,
-            hour,
-            minute,
-            duration,
-            lat,
-            lon,
-            mock=args.mock)
-        idx, temp_level = get_temperature_level(temp, temperature_levels)
-        temp_level = let_user_choose_option(
-            f"temperature level (records show t={temp}°C)", temperature_levels, idx)
-
-        result = {
-            "text": text,
-            "geo_str": geo_str,
-            "year": year,
-            "day": day,
-            "month": month,
-            "hour": hour,
-            "minute": minute,
-            "hour_to": hour_to,
-            "minute_to": minute_to,
-            "sky_condition_level": sky_condition_level,
-            "wind_level": wind_level,
-            "temperature_level": temp_level,
-            "bird_records": bird_records,
-        }
-        results.append(result)
+        if result is not None:
+            results.append(result)
 
     with open(args.output_file, "w", encoding="utf8") as f:
         json.dump(results, f, indent=4, ensure_ascii=False)
