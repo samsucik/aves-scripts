@@ -2,7 +2,7 @@ sky_condition_levels = [
     {
         "name": "jasno (obloha úplne bez oblačnosti)",
         "code": 1,
-        "descriptive_words": ["jasno", "jas"],
+        "descriptive_words": ["jasno", "jas", "slnecno"],
     },
     {
         "name": "polojasno (veľká väčšina oblohy bez oblačnosti)",
@@ -22,7 +22,7 @@ sky_condition_levels = [
     {
         "name": "zamračené (obloha je úplne pokrytá oblačnosťou)",
         "code": 5,
-        "descriptive_words": ["zamracene", "zamrac"],
+        "descriptive_words": ["zamracene", "zamrac", "zatiahnute"],
     },
     {
         "name": "hmla / zamračené nízkou inverznou oblačnosťou (na horách jasno)",
