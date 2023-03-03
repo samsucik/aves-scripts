@@ -27,7 +27,7 @@ code;position;name;synonyms
 27;1.3.2.2.;skládky kvapalných odpadov;
 28;1.3.3.;areály výstavby;
 29;1.4.;umelá nepoľnohospodárska zeleň;
-30;1.4.1.;mestská zeleň;
+30;1.4.1.;mestská zeleň;park
 31;1.4.2.;areály športu a voľného času;
 32;2.;poľnohospodárske areály;
 33;2.1.;orná pôda;pole
@@ -163,7 +163,7 @@ code;position;name;synonyms
 163;2.4.;heterogénne poľnohospodárske areály;
 164;2.4.2.;mozaika polí, lúk a trvalých kultúr;
 165;2.4.2.1.;mozaika polí, lúk a trvalých kultúr bez budov;
-166;2.4.2.2.;mozaika polí, lúk a trvalých kultúr s budovami;
+166;2.4.2.2.;mozaika polí, lúk a trvalých kultúr s budovami;zahrada
 167;2.4.2.3.;samota (sídlo);
 168;3.;lesy a poloprírodné areály;
 169;3.1.;lesná a nelesná drevinová vegetácia;
