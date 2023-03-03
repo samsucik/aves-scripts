@@ -18,7 +18,7 @@ counter = 1
 for (species_data of all_species_data) {{
 	if (counter > 1) {{
 		$("#sf_fieldset_none > div.detailsFieldset > table > tbody > tr > td > div > div.content > div.help > a").click()
-		await new Promise(r => setTimeout(r, 500));
+		await new Promise(r => setTimeout(r, 1000));
 	}}
 	$("#zoology_detail_" + counter + "_lkpzoospecies_id").val(species_data["species_id"])
 	$("#autocomplete_zoology_detail_" + counter + "_lkpzoospecies_id").val(species_data["name"])
