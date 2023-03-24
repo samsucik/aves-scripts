@@ -1,18 +1,18 @@
 sky_condition_levels = [
     {
-        "name": "jasno (obloha úplne bez oblačnosti)",
-        "code": 1,
-        "descriptive_words": ["jasno", "jas", "slnecno"],
-    },
-    {
         "name": "polojasno (veľká väčšina oblohy bez oblačnosti)",
         "code": 2,
         "descriptive_words": ["polojasno", "polojas"],
     },
     {
+        "name": "jasno (obloha úplne bez oblačnosti)",
+        "code": 1,
+        "descriptive_words": ["jasno", "jas", "slnecno"],
+    },
+    {
         "name": "polooblačno (asi polovica oblohy je pokrytá oblačnosťou)",
         "code": 3,
-        "descriptive_words": ["polooblacno", "polooblac"],
+        "descriptive_words": ["polooblacno", "polooblac", "poloob"],
     },
     {
         "name": "oblačno (väčšina oblohy je pokrytá oblačnosťou)",
