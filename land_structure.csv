@@ -2,7 +2,7 @@ code;position;name;synonyms
 2;1.;umelé povrchy;
 3;1.1.;urbanizovaná;
 4;1.1.1.;súvislá zástavba;
-5;1.1.2.;nesúvislá zástavba;
+5;1.1.2.;nesúvislá zástavba;dedina
 6;1.2.;priemysel, komercia a transport;
 7;1.2.1.;priemysel alebo komercia;
 8;1.2.2.;cesty a železnice s priľahlými areálmi;
@@ -194,7 +194,7 @@ code;position;name;synonyms
 194;5.1.;vnútrozemské vody;
 195;5.1.1.;vodné toky;
 196;5.1.1.1.;prirodzené toky;
-197;5.1.1.2.;umelé toky;
+197;5.1.1.2.;umelé toky;kanal
 198;5.1.1.3.;periodické toky;
 199;5.1.2.;plochy stojatých vôd;
 200;5.1.2.1.;prirodzené a umelé jazerá;
