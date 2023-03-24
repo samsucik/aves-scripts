@@ -11,7 +11,7 @@ import argparse
 from PyInquirer import prompt
 import pandas as pd
 
-from aves_data import sky_condition_levels, wind_levels, temperature_levels
+from aves_data import sky_condition_levels, wind_levels, temperature_levels, observation_characteristics
 import bird_species
 
 name_sim_threshold = 50
@@ -340,8 +340,11 @@ def let_user_search_for_land_structure(df):
     for i, land_struct_type in df.iterrows():
         children = df[df["position"].str.match(f"{land_struct_type['position']}([0-9]+\.)+")]
         children_names = [ch["name"] for _, ch in children.iterrows()]
+        all_names_for_search = [land_struct_type["name"]] + children_names
+        if pd.notna(land_struct_type["synonyms"]):
+            all_names_for_search.append(land_struct_type["synonyms"])
         name_for_search = strip_accents(
-            ", ".join([land_struct_type["name"]] + children_names)).lower()
+            ", ".join(all_names_for_search)).lower()
         depth = land_struct_type["position"].count(".")
         choices.append({
             "name": " " * (depth - 1) + land_struct_type["name"],
@@ -405,6 +408,11 @@ def create_result_from_raw_data(data_obj, year, species_list, land_structures_li
         number = let_user_enter_number(
             default=1 if i >= len(extracted_numbers) else extracted_numbers[i])
 
+        default_idx = observation_characteristics.index(
+            default_observation_characteristic)
+        observation_characteristic = let_user_choose_option("observation characteristic",
+                                                            observation_characteristics, default_idx)
+
         note = let_user_enter_note()
 
         land_structure_type_code = let_user_search_for_land_structure(
@@ -412,7 +420,7 @@ def create_result_from_raw_data(data_obj, year, species_list, land_structures_li
 
         bird_records.append({
             "number": number,
-            "characteristic": default_observation_characteristic,
+            "characteristic": observation_characteristic,
             "method": get_default_observation_method(text),
             "species": selected_species,
             "note": note,
