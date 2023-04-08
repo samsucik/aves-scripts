@@ -358,6 +358,27 @@ def let_user_enter_note(message="Note (optional):"):
     return answer["value"]
 
 
+def let_user_search_for_option(name, options, default_code, show_all=False):
+    choices = []
+    for option in options:
+        choices.append({
+            "name": option["name"],
+            "name_for_search": strip_accents(option["name"]).lower(),
+            "value": option["code"]
+        })
+    question = {
+        "type": "searchable_menu",
+        "name": "value",
+        "message": f"Choose {name} (type to filter):",
+        "choices": choices,
+        "default": default_code,
+    }
+    kwargs = {"n_rows_to_show": len(options)} if show_all else {}
+    answer = prompt.prompt([question], **kwargs)
+    return [o for o in options if o["code"] == answer["value"]][
+        0] if answer != {} else None
+
+
 def let_user_search_for_land_structure(df):
     choices = []
     for i, land_struct_type in df.iterrows():
@@ -431,10 +452,10 @@ def create_result_from_raw_data(data_obj, year, species_list, land_structures_li
         number = let_user_enter_number(
             default=1 if i >= len(extracted_numbers) else extracted_numbers[i])
 
-        default_idx = observation_characteristics.index(
-            default_observation_characteristic)
-        observation_characteristic = let_user_choose_option("observation characteristic",
-                                                            observation_characteristics, default_idx)
+        default_code = default_observation_characteristic["code"]
+        observation_characteristic = let_user_search_for_option(
+            "observation characteristic",
+            observation_characteristics, default_code, show_all=True)
 
         note = let_user_enter_note()
 
