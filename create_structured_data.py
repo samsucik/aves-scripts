@@ -30,7 +30,9 @@ def get_default_observation_method(text):
 
 def get_temperature_level(temp, temperature_levels):
     if temp is not None:
-        for i, level in enumerate(temperature_levels[1:]):  # skip first option (N/A)
+        for i, level in enumerate(temperature_levels):
+            if i == 0:  # skip first option (N/A)
+                continue
             if temp < max(level["range"]) and temp >= min(level["range"]):
                 return i, get_dict_subset(level, ["name", "code"])
 
