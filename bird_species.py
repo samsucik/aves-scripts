@@ -114,6 +114,15 @@ def get_species():
     return sorted(species, key=lambda spec: spec["n_records"], reverse=True)
 
 
+def add_freq_rank(species_list):
+    all_freqs = sorted(list(set([s["n_records"] for s in species_list])))
+    max_freq_rank = len(all_freqs)
+    for i in range(len(species_list)):
+        species_list[i]["freq_rank"] = all_freqs.index(
+            species_list[i]["n_records"]) / max_freq_rank
+    return species_list
+
+
 def main():
     download_species_list_from_aves(languages=["latin", "slovak"])
     print(get_species())

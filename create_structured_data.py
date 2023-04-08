@@ -49,11 +49,16 @@ def strip_accents(s):
     )
 
 
-def get_similarity_score(text, targets):
+def get_similarity_score(texts, targets):
     def _sim_func(text1, text2):
         return fuzz.partial_ratio(text1, text2)
 
-    score = max([_sim_func(text, target) for target in targets])
+    if type(texts) == str:
+        texts = [texts]
+    if type(targets) == str:
+        targets = [targets]
+
+    score = max([_sim_func(text, target) for text in texts for target in targets])
     return score
 
 
@@ -240,7 +245,7 @@ def let_user_choose_option(name, options, default_idx):
     return options[answer["value"]]
 
 
-def let_user_search_for_species(species_all):
+def let_user_search_for_species(species_all, observation_text):
     choices = []
     for i, species in enumerate(species_all):
         if species["name_sk"] and species["name_lat"]:
@@ -248,11 +253,25 @@ def let_user_search_for_species(species_all):
         else:
             name = species["name_sk"].strip() if species["name_sk"] else species[
                 "name_lat"].strip()
+        name_for_search = strip_accents(name).lower()
+
+        # sort species by:
+        # - match against record text (species names split on whitespace, without parenthesised parts)
+        # - frequency of the species' observations
+        name_parts = [strip_accents(part.strip().lower()) for part in bird_species.remove_citation_from_scientific_name(
+            name).split() if len(part.strip()) > 2]
+        text_match = get_similarity_score(name_parts, observation_text)
+        score = species["freq_rank"] + 2 * text_match / 100
+
         choices.append({
             "name": name,
-            "name_for_search": strip_accents(name).lower(),
-            "value": i
+            "name_for_search": name_for_search,
+            "value": i,
+            "ordering_score": score
         })
+
+    choices = sorted(choices, key=lambda s: s["ordering_score"], reverse=True)
+
     question = {
         "type": "searchable_menu",
         "name": "value",
@@ -401,7 +420,7 @@ def create_result_from_raw_data(data_obj, year, species_list, land_structures_li
 
     i = 0
     while True:
-        selected_species = let_user_search_for_species(species_list)
+        selected_species = let_user_search_for_species(species_list, text)
         if selected_species is None:
             break
 
@@ -467,6 +486,7 @@ def main(args):
     api_key = secrets["openweathermap_api_key"]
 
     species = bird_species.get_species()
+    species = bird_species.add_freq_rank(species)
     land_structures_df = pd.read_csv("land_structure.csv", sep=";", dtype={"code": int})
 
     results = []
