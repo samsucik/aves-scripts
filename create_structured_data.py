@@ -29,10 +29,12 @@ def get_default_observation_method(text):
 
 
 def get_temperature_level(temp, temperature_levels):
-    for i, level in enumerate(temperature_levels):
-        if temp < max(level["range"]) and temp >= min(level["range"]):
-            return i, get_dict_subset(level, ["name", "code"])
-    return None, None
+    if temp is not None:
+        for i, level in enumerate(temperature_levels[1:]):  # skip first option (N/A)
+            if temp < max(level["range"]) and temp >= min(level["range"]):
+                return i, get_dict_subset(level, ["name", "code"])
+
+    return 0, None
 
 
 def get_default_observation_characteristic(month, day):
@@ -187,10 +189,12 @@ def get_temperature(api_key, year, month, day, hour, minute, duration, lat, lon,
 
     mid_timestamp = int((start_timestamp + end_timestamp) / 2)
     url = f"https://api.openweathermap.org/data/3.0/onecall/timemachine?lat={lat}&lon={lon}&dt={mid_timestamp}&appid={api_key}&units=metric"
-    x = requests.get(url)
-    if x.status_code == 200:
-        return x.json()["data"][0]["temp"]
-    return None
+    try:
+        x = requests.get(url)
+        if x.status_code == 200:
+            return x.json()["data"][0]["temp"]
+    except Exception:
+        return None
 
 
 def get_args():

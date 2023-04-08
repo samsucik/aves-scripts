@@ -102,6 +102,7 @@ observation_methods = [
 ]
 
 temperature_levels = [
+    {"name": "N/A", "code": "", "range": None},
     {"name": "35 – 40°C", "code": "8", "range": [35, 40]},
     {"name": "30 – 35°C", "code": "7", "range": [30, 35]},
     {"name": "25 – 30°C", "code": "6", "range": [25, 30]},
